@@ -115,7 +115,7 @@ struct HitData {
 };
 
 const Sphere lightSphere = Sphere(vec3(4.0, 3.0, -4.0), 0.3, vec3(1.0, 1.0, 0.9));
-const Sphere blueLight = Sphere(vec3(-4.0, 3.0, -7.0), 0.3, vec3(0.3, 0.5, 1.0));
+const Sphere blueLight = Sphere(vec3(-3.0, 4.0, -3.0), 0.3, vec3(0.2, 0.5, 1.0));
 Sphere sphere;
 Sphere glassSphere;
 Cube cube;
@@ -280,9 +280,8 @@ vec3 trace(Ray ray) {
 
         vec3 shading = hit.color * u_ambientStrength;
         shading += LIGHT_POWER * (hit.color * diff + vec3(0.4) * spec) * lightSphere.color * falloff * visible;
-        shading += LIGHT_POWER * (hit.color * blueDiff + vec3(0.4) * blueSpec) * blueLight.color * blueFalloff * blueVisible;
+        shading += 12.0 * (hit.color * blueDiff + vec3(0.4) * blueSpec) * blueLight.color * blueFalloff * blueVisible;
         color += attenuation * shading * (1.0 - hit.reflectivity);
-
         if (hit.reflectivity == 0.0) break;
         attenuation *= hit.reflectivity;
         ray = Ray(hit.point + hit.normal * 0.001, reflect(ray.direction, hit.normal));
