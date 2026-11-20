@@ -125,6 +125,9 @@ void initScene(float time) {
 
     float b = time * 0.3;
     cube = Cube(vec3(sin(b) * 2.0, cos(b * 1.5) + 0.5, -9.0 + cos(b * 0.7)), 0.8, vec3(0.3, 0.8, 0.3), 0.85);
+
+    glassSphere = Sphere(
+        vec3(-2.2, -0.9, -4.5), 1.1, vec3(0.9, 0.98, 1.0));
 }
 
 bool intersectSphere(Ray ray, Sphere s, out float t) {
@@ -160,14 +163,20 @@ bool intersectCube(Ray ray, out float t, out vec3 normal) {
 }
 
 //eta = n1 / n2
-//vec3 refraction(vec3 I, vec3 N, float eta) {
-//    <!-- insert your code here -->
-//}
+vec3 refraction(vec3 I, vec3 N, float eta) {
+    float cosI = clamp(-dot(I, N), 0.0, 1.0);
+    float k = 1.0 - eta * eta * (1.0 - cosI * cosI);
+    if (k < 0.0) return vec3(0.0);
+    return normalize(eta * I + (eta * cosI - sqrt(k)) * N);
+}
+
 
 // Schlick approximation
-//float schlick(float cosine, float ref_idx) {
-//    <!-- insert your code here -->
-//}
+float schlick(float cosine, float ref_idx) {
+    float r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+    r0 = r0 * r0;
+    return r0 + (1.0 - r0) * pow(1.0 - cosine, 5.0);
+}
 
 bool intersectFloor(Ray ray, out float t) {
     if (abs(ray.direction.y) < 0.0001) return false;
@@ -202,6 +211,11 @@ HitData traceScene(Ray ray, bool includeLight) {
         hit = HitData(true, t, p, (p - sphere.center) / sphere.radius, sphere.color, 0.0, false, false);
     }
 
+    if (intersectSphere(ray, glassSphere, t) && t < hit.t) {
+        vec3 p = ray.origin + ray.direction * t;
+	hit = HitData(true, t, p, normalize(p - glassSphere.center), glassSphere.color, 0.0, false, true);
+    }
+
     return hit;
 }
 
@@ -209,13 +223,13 @@ vec3 trace(Ray ray) {
     vec3 color = vec3(0.0);
     vec3 attenuation = vec3(1.0);
 
-    //use loop to simulate the recursive process as GLSL doesn't support recursions
+    // Use loop to simulate recursion since GLSL doesn't support recursive functions
     for (int bounce = 0; bounce < u_maxBounces; bounce++) {
         HitData hit = traceScene(ray, true);
 
         if (!hit.hit) {
             float t = 0.5 * (ray.direction.y + 1.0);
-            color += attenuation * mix(vec3(0.09, 0.12, 0.18), vec3(0.18, 0.21, 0.27), t);  // sky
+            color += attenuation * mix(vec3(0.09, 0.12, 0.18), vec3(0.18, 0.21, 0.27), t);
             break;
         }
 
@@ -224,26 +238,21 @@ vec3 trace(Ray ray) {
             break;
         }
 
-        // Refraction: (option 1)either reflects or refracts the ray, whichever Schlick says is stronger
-        // (option 2): finalColor = hit.color * (F * reflectionColor + (1.0 - F) * refractionColor)
-        // (option 3): Monte Carlo Sampling (multiple rays per pixel), reflect with probability F (random() < schlick_value), else refract, and average many samples per pixel
-        //<!-- if (hit.isGlass) {
-        //    <!-- insert your code here -->
-
-        //    vec3 direction;
-        //    if (total_internal_reflection || schlick_value > 0.5) {
-                //direction = reflection ray
-        //        <!-- insert your code here -->
-        //    } else {
-                //direction = refraction ray
-        //        <!-- insert your code here -->
-        //    }
-
-        //    ray = Ray(hit.point + direction * 0.001, direction);
-        ////Use Schlick approximation to determine contributions from reflection and refraction
-        //    attenuation *= hit.color;
-        //    continue;
-        //}
+        // Glass refraction and reflection using Schlick approximation
+        if (hit.isGlass) {
+            vec3 N = hit.normal;
+            bool entering = dot(ray.direction, N) < 0.0;
+            if (!entering) N = -N;
+            float eta = entering ? 1.0 / GLASS_IOR : GLASS_IOR;
+            float cosine = clamp(-dot(ray.direction, N), 0.0, 1.0);
+            float sin2T = eta * eta * (1.0 - cosine * cosine);
+            float F = schlick(cosine, GLASS_IOR);
+            bool totalInternalReflection = sin2T > 1.0;
+            vec3 direction = totalInternalReflection || F > 0.5 ? reflect(ray.direction, N) : refraction(ray.direction, N, eta);
+            ray = Ray(hit.point + direction * 0.002, direction);
+            attenuation *= hit.color;
+            continue;
+        }
 
         vec3 toLight = lightSphere.center - hit.point;
         float lightDist = length(toLight);
@@ -254,7 +263,7 @@ vec3 trace(Ray ray) {
         float diff = max(dot(hit.normal, lightDir), 0.0);
         float falloff = 1.0 / (1.0 + 0.1 * lightDist * lightDist);
 
-        //  (optional) Ambient fill light approximates indirect light we don't trace.
+        // Ambient fill light approximates indirect lighting
         vec3 shading = hit.color * (LIGHT_POWER * diff * falloff * visible + u_ambientStrength);
         color += attenuation * shading * (1.0 - hit.reflectivity);
 
