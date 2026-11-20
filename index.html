@@ -58,6 +58,11 @@
           <input type="range" id="ambient" min="0" max="1" step="0.05" value="0.05">
           <span id="ambientValue">0.5</span>
         </div>
+        <div class="control-row">
+          <label for="shininess">Shininess:</label>
+          <input type="range" id="shininess" min="4" max="128" step="4" value="32">
+          <span id="shininessValue">32</span>
+        </div>
       </div>
     </div>
   </div>
@@ -76,6 +81,7 @@ uniform float u_time;
 uniform vec2 u_resolution;
 uniform int u_maxBounces;
 uniform float u_ambientStrength; //Ambient fill light for better visual
+uniform float u_shininess;
 uniform vec2 u_cameraOrbit;
 
 out vec4 fragColor;
@@ -360,7 +366,8 @@ void main() {
 
   const bounces = document.getElementById("bounces");
   const ambient = document.getElementById("ambient");
-  for (const slider of [bounces, ambient]) {
+  const shininess = document.getElementById("shininess");
+  for (const slider of [bounces, ambient, shininess]) {
     slider.addEventListener("input", () => document.getElementById(slider.id + "Value").textContent = slider.value);
   }
 
@@ -382,6 +389,7 @@ void main() {
     gl.uniform2f(uniform("u_resolution"), canvas.width, canvas.height);
     gl.uniform1i(uniform("u_maxBounces"), bounces.value);
     gl.uniform1f(uniform("u_ambientStrength"), ambient.value);
+    gl.uniform1f(uniform("u_shininess"), Number(shininess.value));
     gl.uniform2f(uniform("u_cameraOrbit"), pitch, yaw);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
