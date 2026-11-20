@@ -281,8 +281,8 @@ vec3 trace(Ray ray) {
         float blueFalloff = 1.0 / (1.0 + 0.1 * blueDist * blueDist);
 
         vec3 V = normalize(-ray.direction);
-        float spec = diff > 0.0 ? pow(max(dot(V, reflect(-lightDir, hit.normal)), 0.0), 32.0) : 0.0;
-        float blueSpec = blueDiff > 0.0 ? pow(max(dot(V, reflect(-blueDir, hit.normal)), 0.0), 32.0) : 0.0;
+        float spec = diff > 0.0 ? pow(max(dot(V, reflect(-lightDir, hit.normal)), 0.0), u_shininess) : 0.0;
+        float blueSpec = blueDiff > 0.0 ? pow(max(dot(V, reflect(-blueDir, hit.normal)), 0.0), u_shininess) : 0.0;
 
         vec3 shading = hit.color * u_ambientStrength;
         shading += LIGHT_POWER * (hit.color * diff + vec3(0.4) * spec) * lightSphere.color * falloff * visible;
