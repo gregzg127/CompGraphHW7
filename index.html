@@ -63,6 +63,11 @@
           <input type="range" id="shininess" min="4" max="128" step="4" value="32">
           <span id="shininessValue">32</span>
         </div>
+        <div class="control-row">
+          <label for="blueIntensity">Blue Light Strength:</label>
+          <input type="range" id="blueIntensity" min="0" max="24" step="1" value="12">
+          <span id="blueIntensityValue">12</span>
+        </div>
       </div>
     </div>
   </div>
@@ -82,6 +87,7 @@ uniform vec2 u_resolution;
 uniform int u_maxBounces;
 uniform float u_ambientStrength; //Ambient fill light for better visual
 uniform float u_shininess;
+uniform float u_blueIntensity;
 uniform vec2 u_cameraOrbit;
 
 out vec4 fragColor;
@@ -286,8 +292,7 @@ vec3 trace(Ray ray) {
 
         vec3 shading = hit.color * u_ambientStrength;
         shading += LIGHT_POWER * (hit.color * diff + vec3(0.4) * spec) * lightSphere.color * falloff * visible;
-        shading += 12.0 * (hit.color * blueDiff + vec3(0.4) * blueSpec) * blueLight.color * blueFalloff * blueVisible;
-        color += attenuation * shading * (1.0 - hit.reflectivity);
+shading += u_blueIntensity * (hit.color * blueDiff + vec3(0.4) * blueSpec) * blueLight.color * blueFalloff * blueVisible;        color += attenuation * shading * (1.0 - hit.reflectivity);
         if (hit.reflectivity == 0.0) break;
         attenuation *= hit.reflectivity;
         ray = Ray(hit.point + hit.normal * 0.001, reflect(ray.direction, hit.normal));
@@ -367,7 +372,8 @@ void main() {
   const bounces = document.getElementById("bounces");
   const ambient = document.getElementById("ambient");
   const shininess = document.getElementById("shininess");
-  for (const slider of [bounces, ambient, shininess]) {
+  const blueIntensity = document.getElementById("blueIntensity");
+  for (const slider of [bounces, ambient, shininess, blueIntensity]) {
     slider.addEventListener("input", () => document.getElementById(slider.id + "Value").textContent = slider.value);
   }
 
@@ -390,6 +396,7 @@ void main() {
     gl.uniform1i(uniform("u_maxBounces"), bounces.value);
     gl.uniform1f(uniform("u_ambientStrength"), ambient.value);
     gl.uniform1f(uniform("u_shininess"), Number(shininess.value));
+    gl.uniform1f(uniform("u_blueIntensity"), Number(blueIntensity.value));
     gl.uniform2f(uniform("u_cameraOrbit"), pitch, yaw);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
